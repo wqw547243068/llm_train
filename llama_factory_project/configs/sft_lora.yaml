@@ -1,0 +1,117 @@
+# ============================================================
+# LLaMA-Factory v0.8+  ·  LoRA 高效微调配置
+# 适用场景：消费级 GPU（如 4090 / A5000 24G）
+# 训练方法：Supervised Fine-Tuning (SFT) + LoRA
+# ============================================================
+
+### 1. 模型 & 分词器
+model:
+  base_model_path: Qwen/Qwen2.5-7B-Instruct   # 🤗 HuggingFace 模型名或本地路径
+  tokenizer_path: Qwen/Qwen2.5-7B-Instruct
+
+  # 量化（可选，节省显存；开启则 base_model_path 指向量化模型）
+  # quantization_bit: 4
+
+  # 注意力机制
+  use_flash_attn: true                         # FlashAttention-2，显著加速 & 省显存
+  rope_scaling:                                # Long-context 扩展（可选）
+    type: linear
+    factor: 4.0
+
+### 2. 适配器（LoRA 配置）
+adapter:
+  adapter_path: ./saves/Qwen2.5-7B/lora_train  # 保存/断点路径
+  adapter_name: lora_train
+
+  # LoRA 关键参数
+  lora_rank: 16                               # r，越大表达能力越强，显存需求越高
+  lora_alpha: 32                              # α = r * scale_factor，建议 = 2*r
+  lora_dropout: 0.05
+
+  # LoRA 作用目标（哪些层的参数需要训练）
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+### 3. 数据集
+dataset:
+  # 内置数据集（逗号分隔）
+  dataset:
+    - alpaca_en
+    - sharegpt_zh
+
+  # 自定义数据集（优先）
+  # dataset:
+  #   - my_chat_dataset
+
+  dataset_dir: ./data
+  max_samples: 100000                         # 最大采样数，-1 表示全量
+  cutoff_len: 2048                            # 最大上下文长度（token）
+  train_on_prompt: false                      # 是否在 prompt 上计算 loss
+  mask_history: true                           # 对历史消息的 role=assistant 部分不计算 loss
+
+  # 格式化模板（影响数据集的 role 解析）
+  template: qwen                              # 支持：qwen, llama3, chatglm4, mixtral ...
+  portion: 1.0                                # 使用数据集的比例
+
+### 4. 训练器参数
+trainer:
+  batch_size: 2                               # per-device batch size（梯度累积自动扩展）
+  gradient_accumulation_steps: 8              # 等效 batch_size = 2*8=16
+  learning_rate: 1.0e-4
+  num_train_epochs: 3
+  max_steps: -1                               # 优先使用 steps 而非 epochs
+  warmup_ratio: 0.03                          # 预热步数比例
+
+  # 优化器
+  optim: adamw_torch                          # adamw_torch / adamw_8bit / paged_adamw_32bit
+  lr_scheduler_type: cosine
+  weight_decay: 0.0
+  max_grad_norm: 1.0                           # 梯度裁剪
+
+  # 显存优化
+  use_gradient_checkpointing: true             # 激活检查点，省 ~40% 显存
+
+  # 混合精度
+  bf16: true                                  # A100 / H100 推荐；V100 用 fp16
+  # fp16: true
+
+  # 正则化
+  neftune_alpha: 0                            # NEFTune 噪声嵌入（可提升对话质量）
+
+  # 日志 & 评估
+  logging_steps: 1
+  save_steps: 500
+  eval_steps: 500
+  evaluation_strategy: steps                  # steps / epoch / no
+  save_total_limit: 3                        # 最多保留 3 个 checkpoint
+  do_eval: true                              # 是否在 eval_steps 时做评估
+
+  # 其他
+  ddp_timeout: 1800000
+  save_only_model: true                      # 只保存模型权重，跳过优化器状态（节省空间）
+  warmup_steps: -1                           # 自动由 warmup_ratio 计算
+  output_dir: ./saves/Qwen2.5-7B/lora_train
+  log_level: info
+
+### 5. 杂项
+finetuning_type: lora                        # lora | full | none（纯推理）
+
+### 6. DeepSpeed ZeRO（可选）
+# deepspeed:
+#   stage: 3
+#   offload_optimizer:
+#     device: cpu
+#     pin_memory: true
+#   offload_param:
+#     device: cpu
+#     pin_memory: true
+#   overlap_comm: true
+#   stage3_param_pct_threshold: 0.08
+#   stage3_prefetch_bucket_size: 0.04
+#   stage3_eager_bucket_size: 0.1

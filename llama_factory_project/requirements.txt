@@ -1,0 +1,42 @@
+# LLaMA-Factory 项目依赖
+# 安装: pip install -r requirements.txt
+
+# ── 核心 ──────────────────────────────────────────────
+llamafactory>=0.8.0
+
+# ── PyTorch（按你的 CUDA 版本选择）────────────────────
+# CUDA 12.1:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+torch>=2.0.0
+transformers>=4.43.0
+accelerate>=0.34.0
+
+# ── 量化 ──────────────────────────────────────────────
+auto-gptq>=0.7.0          # GPTQ 量化
+bitsandbytes>=0.43.0       # QLoRA / 8-bit 优化器
+awq>=0.2.0                 # AWQ 量化
+
+# ── 显存优化 ──────────────────────────────────────────
+deepspeed>=0.14.0          # DeepSpeed ZeRO
+# pip install flash-attn --no-build-isolation  # FlashAttention（Linux + CUDA）
+
+# ── 数据处理 ──────────────────────────────────────────
+pandas>=2.0.0
+pyarrow>=14.0.0
+datasets>=2.18.0
+tiktoken>=0.7.0
+jieba>=0.42.1
+
+# ── 监控 ──────────────────────────────────────────────
+tensorboard>=2.17.0
+wandb>=0.17.0
+
+# ── 工具 ──────────────────────────────────────────────
+scikit-learn>=1.4.0
+safetensors>=0.4.0
+huggingface_hub>=0.24.0
+numpy<2.0.0
+
+# ── 开发 ──────────────────────────────────────────────
+pytest>=8.0.0
+ipython>=8.20.0

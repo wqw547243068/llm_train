@@ -1,0 +1,72 @@
+# ============================================================
+# LLaMA-Factory v0.8+  ·  全参数微调配置
+# 适用场景：多卡 A100/H100 (80G×8)，或大模型小参数
+# 训练方法：Supervised Fine-Tuning (SFT) 全参数更新
+# ============================================================
+
+### 1. 模型 & 分词器
+model:
+  base_model_path: Qwen/Qwen2.5-1.5B-Instruct   # 小模型示例（1.5B 可全参微调）
+  tokenizer_path: Qwen/Qwen2.5-1.5B-Instruct
+  use_flash_attn: true
+  trust_remote_code: true
+
+### 2. 适配器（全参数微调，无 LoRA）
+adapter: ~                                     # 全参数模式不需 adapter 配置
+
+### 3. 数据集
+dataset:
+  dataset:
+    - my_chat_dataset
+  dataset_dir: ./data
+  max_samples: 50000
+  cutoff_len: 1024
+  train_on_prompt: false
+  mask_history: true
+  template: qwen
+  portion: 1.0
+
+### 4. 训练器参数
+trainer:
+  batch_size: 4
+  gradient_accumulation_steps: 4               # 等效 16
+  learning_rate: 5.0e-6                        # 全参数微调用更小的 lr
+  num_train_epochs: 2
+  max_steps: -1
+  warmup_ratio: 0.1                            # 全参数需要更长的 warmup
+
+  optim: adamw_torch
+  lr_scheduler_type: cosine
+  weight_decay: 0.01
+  max_grad_norm: 0.5
+
+  use_gradient_checkpointing: true
+  bf16: true
+
+  logging_steps: 1
+  save_steps: 200
+  eval_steps: 200
+  evaluation_strategy: steps
+  save_total_limit: 2
+  do_eval: true
+
+  ddp_timeout: 1800000
+  save_only_model: false                      # 全参数需保存 optimizer 状态以便恢复
+  output_dir: ./saves/Qwen2.5-1.5B/full_train
+  log_level: info
+
+finetuning_type: full
+
+### 5. DeepSpeed（全参数必须用 ZeRO）
+deepspeed:
+  stage: 3
+  offload_optimizer:
+    device: cpu
+    pin_memory: true
+  offload_param:
+    device: cpu
+    pin_memory: true
+  overlap_comm: true
+  stage3_param_pct_threshold: 0.08
+  stage3_prefetch_bucket_size: 0.04
+  stage3_eager_bucket_size: 0.1

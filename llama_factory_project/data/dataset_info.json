@@ -1,0 +1,37 @@
+{
+  "my_chat_dataset": {
+    "file_name": "my_chat_dataset.jsonl",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages"
+    },
+    "tags": {
+      "role_tag": "from",
+      "content_tag": "value",
+      "user_tag": "human",
+      "assistant_tag": "gpt"
+    }
+  },
+
+  "alpaca_en": {
+    "file_name": "alpaca_en.jsonl",
+    "formatting": "alpaca",
+    "columns": {
+      "messages": "messages"
+    }
+  },
+
+  "sharegpt_zh": {
+    "file_name": "sharegpt_zh.jsonl",
+    "formatting": "sharegpt",
+    "columns": {
+      "messages": "messages"
+    },
+    "tags": {
+      "role_tag": "from",
+      "content_tag": "value",
+      "user_tag": "human",
+      "assistant_tag": "gpt"
+    }
+  }
+}

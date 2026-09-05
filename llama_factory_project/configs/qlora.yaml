@@ -1,0 +1,89 @@
+# ============================================================
+# LLaMA-Factory v0.8+  ·  QLoRA 量化微调配置
+# 适用场景：单卡 16G 显存（如 RTX 4060 Ti / Mac M2 Pro）
+# 训练方法：QLoRA = NF4 量化 + LoRA（4-bit 量化基座 + LoRA 适配器）
+# ============================================================
+
+### 1. 模型 & 分词器
+model:
+  base_model_path: meta-llama/Llama-3.1-8B-Instruct   # 示例，替换为你的模型
+  tokenizer_path: meta-llama/Llama-3.1-8B-Instruct
+
+  # ── 量化关键配置 ──
+  quantization_bit: 4                          # 4-bit NF4 量化，大幅降低显存占用
+  bnb_4bit_compute_dtype: bf16                # 计算时用 bf16，不损失精度
+  bnb_4bit_use_double_quant: true             # 双重量化（meta-quantization），省更多显存
+  bnb_4bit_quant_type: nf4                   # NF4 是 QLoRA 推荐量化类型
+
+  use_flash_attn: false                       # Mac / 量化模型建议关闭
+  trust_remote_code: true
+
+### 2. 适配器（LoRA 配置，比普通 LoRA 更省显存）
+adapter:
+  adapter_path: ./saves/Llama-3.1-8B/qlora_train
+  adapter_name: qlora_train
+
+  lora_rank: 64                               # QLoRA 可用更大的 r
+  lora_alpha: 128
+  lora_dropout: 0.1
+
+  target_modules:
+    - q_proj
+    - k_proj
+    - v_proj
+    - o_proj
+    - gate_proj
+    - up_proj
+    - down_proj
+
+### 3. 数据集
+dataset:
+  dataset:
+    - my_chat_dataset
+    - alpaca_en
+  dataset_dir: ./data
+  max_samples: 80000
+  cutoff_len: 1536                             # 4-bit 模型建议用更短上下文
+  train_on_prompt: false
+  mask_history: true
+  template: llama3                            # Llama3 用 llama3 模板
+  portion: 1.0
+
+### 4. 训练器参数（显存极致优化）
+trainer:
+  batch_size: 1                                # 量化后单卡可跑，batch_size 可以很小
+  gradient_accumulation_steps: 16              # 通过累积步数弥补 batch size 不足
+  learning_rate: 2.0e-4
+  num_train_epochs: 3
+  max_steps: -1
+  warmup_ratio: 0.03
+
+  # QLoRA 专用优化器（paged_adamw_32bit 自动管理显存碎片）
+  optim: paged_adamw_32bit
+  lr_scheduler_type: cosine
+  weight_decay: 0.0
+  max_grad_norm: 0.5
+
+  use_gradient_checkpointing: true
+
+  logging_steps: 1
+  save_steps: 500
+  eval_steps: 500
+  evaluation_strategy: steps
+  save_total_limit: 3
+  do_eval: true
+
+  ddp_timeout: 1800000
+  save_only_model: true
+  output_dir: ./saves/Llama-3.1-8B/qlora_train
+  log_level: info
+
+finetuning_type: lora
+
+### 5. DeepSpeed ZeRO-2（可选，Mac M 系列忽略）
+# Mac M 系列请删除整个 deepspeed 区块
+deepspeed:
+  stage: 2
+  offload_optimizer:
+    device: cpu
+    pin_memory: true
